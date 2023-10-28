@@ -37,7 +37,26 @@ void DMAHandler::assertNoInit() const
 
 }
 
+DMAHandler::DMAHandler()
+{
+
+}
+
 DMAHandler::DMAHandler(const wchar_t* wname, bool memMap)
+{
+	this->InitializeDMA(wname, memMap);
+}
+
+DMAHandler::~DMAHandler()
+{
+	if (DMA_INITIALIZED)
+	{
+		DMA_INITIALIZED = false;
+		VMMDLL_Close(this->vHandle);
+	}
+}
+
+void DMAHandler::InitializeDMA(const wchar_t* wname, bool memMap)
 {
 	if (!DMA_INITIALIZED)
 	{
@@ -56,7 +75,7 @@ DMAHandler::DMAHandler(const wchar_t* wname, bool memMap)
 
 		log("inizializing...");
 
-		LPSTR args[] = { (LPSTR)"", (LPSTR)"-device", (LPSTR)"fpga", (LPSTR)"-v", "", ""};
+		LPSTR args[] = { (LPSTR)"", (LPSTR)"-device", (LPSTR)"fpga", (LPSTR)"-v", "", "" };
 		DWORD argc = 4;
 
 		if (memMap)
@@ -115,18 +134,9 @@ DMAHandler::DMAHandler(const wchar_t* wname, bool memMap)
 	else
 		PROCESS_INITIALIZED = TRUE;
 
-	
-	if(DMA_MEMMAP)
-		DMA_MEMMAP_DUMPED = true;
-}
 
-DMAHandler::~DMAHandler()
-{
-	if (DMA_INITIALIZED)
-	{
-		DMA_INITIALIZED = false;
-		VMMDLL_Close(this->vHandle);
-	}
+	if (DMA_MEMMAP)
+		DMA_MEMMAP_DUMPED = true;
 }
 
 bool DMAHandler::DumpMemoryMap()
@@ -166,12 +176,12 @@ bool DMAHandler::DumpMemoryMap()
 }
 
 bool DMAHandler::isInitialized() const
-{		   
+{
 	if (DMA_MEMMAP) {
-		while(!DMA_MEMMAP_DUMPED)
+		while (!DMA_MEMMAP_DUMPED)
 			std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
-		
+
 	return DMA_INITIALIZED && PROCESS_INITIALIZED;
 }
 
@@ -189,7 +199,7 @@ ULONG64 DMAHandler::getBaseAddress()
 	return processInfo.base;
 }
 
-void DMAHandler::read(const ULONG64 address, const ULONG64 buffer, const SIZE_T size) const
+bool DMAHandler::read(const ULONG64 address, const ULONG64 buffer, const SIZE_T size) const
 {
 	assertNoInit();
 	DWORD dwBytesRead = 0;
@@ -198,10 +208,11 @@ void DMAHandler::read(const ULONG64 address, const ULONG64 buffer, const SIZE_T 
 	readSize += size;
 #endif
 
-	VMMDLL_MemReadEx(this->vHandle, processInfo.pid, address, reinterpret_cast<PBYTE>(buffer), size, &dwBytesRead, VMMDLL_FLAG_NOCACHE | VMMDLL_FLAG_NOPAGING | VMMDLL_FLAG_ZEROPAD_ON_FAIL | VMMDLL_FLAG_NOPAGING_IO);
+	bool status = VMMDLL_MemReadEx(this->vHandle, processInfo.pid, address, reinterpret_cast<PBYTE>(buffer), size, &dwBytesRead, VMMDLL_FLAG_NOCACHE | VMMDLL_FLAG_NOPAGING | VMMDLL_FLAG_ZEROPAD_ON_FAIL | VMMDLL_FLAG_NOPAGING_IO);
 
 	if (dwBytesRead != size)
 		log("Didnt read all bytes requested! Only read %llu/%llu bytes!", dwBytesRead, size);
+	return status;
 }
 
 bool DMAHandler::write(const ULONG64 address, const ULONG64 buffer, const SIZE_T size) const
@@ -230,7 +241,7 @@ ULONG64 DMAHandler::patternScan(const char* pattern, const std::string& mask, bo
 			}
 		}
 		return true;
-	};
+		};
 
 	if (patternMap.contains(pattern))
 		return patternMap[pattern];

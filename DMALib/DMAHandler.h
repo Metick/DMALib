@@ -38,7 +38,7 @@ class DMAHandler
 
 	BaseProcessInfo processInfo{};
 
-	
+
 
 	// Private log function used by the DMAHandler class
 	static void log(const char* fmt, ...);
@@ -48,7 +48,7 @@ class DMAHandler
 
 private:
 	bool DumpMemoryMap();
-	
+
 public:
 	VMM_HANDLE vHandle;
 	/**
@@ -57,7 +57,12 @@ public:
 	 * \param wname process name
 	 */
 	DMAHandler(const wchar_t* wname, bool memMap = true);
+	DMAHandler();
 	~DMAHandler();
+
+	//Initialize the DMA and Process if it hasn't happend yet.
+	void InitializeDMA(const wchar_t* wname, bool memMap = true);
+
 	// Whether the DMA and Process are initialized
 	bool isInitialized() const;
 
@@ -67,7 +72,7 @@ public:
 	// Gets the Base address of the process
 	ULONG64 getBaseAddress();
 
-	void read(ULONG64 address, ULONG64 buffer, SIZE_T size) const;
+	bool read(ULONG64 address, ULONG64 buffer, SIZE_T size) const;
 
 	template <typename T>
 	T read(void* address)
